@@ -1,33 +1,46 @@
-// Game state and UI elements
 const display = document.getElementById("display");
 const board = document.getElementById("board");
 const searchBtn = document.getElementById("search");
 
-const handleClick = (number) => {
-    console.log(`click in square ${number}`);
-    // Future game logic here
+// Websocket
+const socket = new WebSocket(`ws://${window.location.hostname}:8080`);
+socket.onopen = () => {
+    console.log("Websocket connected");
 };
 
-// Initialize square event listeners
+// Game state //TODO: move to typescript
+const GameState = {
+    turn: false,
+    symbol: null, // 'X', 'O', 'null'
+    result: null, // 'WIN', 'LOSE', 'TIE', 'null'
+    state: "idle", // 'idle', 'searching', 'playing', 'finished'
+    board: ['', '', '', '', '', '', '', '', ''],
+}
+
+// Square clicks
+const handleClick = (number) => {
+    if (GameState.state === "playing" && GameState.board[number-1] === ''){
+        message = {
+            type:"movement",
+            square: number,
+        }
+        socket.send(JSON.stringify(message));
+        console.log(`click in square ${number}`);
+    }
+};
+
 document.querySelectorAll('.square').forEach((square, index) => {
     square.addEventListener('click', () => handleClick(index + 1));
 });
 
-// Search button listener
+// Searching match
 searchBtn.addEventListener('click', () => {
-    console.log("Buscando partida...");
-    // Future search logic here
+
+    GameState.state = "searching";
+    display.innerHTML = "Buscando partida...";
+    const message = {
+        type:"search",
+    }
+    socket.send(JSON.stringify(message));
 });
 
-// WebSocket setup
-const socket = new WebSocket("ws://localhost:8080", "ws");
-
-socket.onopen = () => {
-    console.log("WebSocket connection established");
-};
-
-socket.onmessage = (event) => {
-    console.log("Message from server:", event.data);
-};
-
-display.innerHTML = '3 en raya';
