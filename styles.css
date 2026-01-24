@@ -53,7 +53,7 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 2rem;
+    gap: 1rem;
     flex: 1;
     max-width: 400px;
 }
@@ -98,7 +98,7 @@ body {
     outline-offset: -4px;
 }
 
-#search {
+#search-btn {
     font-size: 1.2rem;
     font-weight: 600;
     cursor: pointer;
@@ -108,6 +108,33 @@ body {
     padding: 12px;
     border: 3px solid var(--board-bg);
 }
+
+#again-btn {
+    font-size: 1.2rem;
+    font-weight: 600;
+    cursor: pointer;
+    background-color: var(--square-bg);
+    color: var(--search);
+    width: 100%;
+    padding: 12px;
+    border: 3px solid var(--board-bg);
+}
+
+#leave-btn {
+    display: flex;
+    /* Matches JS assignment */
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    font-weight: 600;
+    cursor: pointer;
+    background-color: var(--square-bg);
+    color: var(--search);
+    width: 100%;
+    padding: 12px;
+    border: 3px solid var(--board-bg);
+}
+
 
 #search:hover {
     background-color: var(--square-hover);
@@ -121,7 +148,6 @@ body {
     flex: 1;
     max-width: 300px;
     border: 8px solid var(--board-bg);
-    height: 500px;
 }
 
 #chatlog {
@@ -140,13 +166,17 @@ body {
 
 #chatform {
     display: flex;
-    margin-top: 10px;
     gap: 4px;
+    width: 100%;
+    margin-top: 8px;
+    background-color: var(--board-bg);
 }
 
 #chatinput {
     color: var(--display);
-    flex-grow: 1;
+    flex: 1;
+    min-width: 0;
+    /* Prevents input from pushing parent wide */
     background-color: var(--square-bg);
     border: none;
     padding: 8px;
@@ -160,7 +190,19 @@ body {
     cursor: pointer;
 }
 
+#mute {
+    border: none;
+    color: var(--display);
+    background-color: var(--square-bg);
+    padding: 8px 15px;
+    cursor: pointer;
+}
+
 #chatsend:hover {
+    background-color: var(--square-hover);
+}
+
+#mute:hover {
     background-color: var(--square-hover);
 }
 
