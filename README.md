@@ -2,47 +2,60 @@
 
 The API is unstable and may change at any time.
 
-## Client
+## Client Messages
 
-### Search match
-Enter the match queue
+### Search Match
+Enter the matchmaking queue.
 ```json
 {"type":"search"}
 ```
-### Leave room
-Leave the current room
+
+### Leave Room
+Leave the current room.
 ```json
 {"type":"leave"}
 ```
-### Rematch
-Ask the opponent to play another game
+
+### Rematch Vote
+Vote to restart the game. The game restarts when both players vote `true`. Send `false` to cancel.
 ```json
-{"type": "rematch"}
+{"type": "rematch", "vote": true}
 ```
-### Rematch Response
-Sent after receiving a `rematch` offer
-```json
-{"type":"response","accept":"true"} // true - false
-```
+
 ### Send Move
-Submit your move (unbelievable, right?)
+Submit your move.
 ```json
-{"type":"movement","square":3} // 0 - 8
+{"type":"move", "square": 3} // 0 - 8
 ```
+
 ### Send Message
-Send a beautiful message to the other player (currently unmoderated)
+Send a message to the other player.
 ```json
 {"type":"message","text":"hello world"}
 ```
 
-## Server
+## Server Messages
 
 ### Match Found
-Sent when the game is ready to start
+Sent when the game is ready to start.
 ```json
-{"type":"match", "symbol":"X"} // "X" "O"
+{"type":"match", "symbol":"X"} // "X" or "O"
 ```
+
 ### Match Ended
-Sent when a result is determined
+Sent when the match concludes.
 ```json
-{"type":"end", "result":"win"} // "win" "lose" "tie"
+{"type":"end", "result":"win", "winner": "X"}
+```
+
+### Rematch Update
+Sent when the opponent changes their vote status.
+```json
+{"type": "rematch_update", "otherPlayerVoted": true}
+```
+
+### Error
+Sent when an action fails (e.g. invalid move or opponent disconnected).
+```json
+{"type": "error", "message": "Not your turn"}
+```
