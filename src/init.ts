@@ -30,6 +30,33 @@ const rooms: Map<string, {
     moveCount: number;
 }> = new Map();
 
+let handleLeave = (player: WebSocket) => {
+    // 1. If the player was in the waiting room, clear it
+    if (player.roomId === waitingRoom) {
+        waitingRoom = null;
+    }
+
+    if (player.roomId && rooms.has(player.roomId)) {
+        const room = rooms.get(player.roomId)!;
+
+        // 2. Remove player from the room
+        room.players = room.players.filter(p => p !== player);
+
+        // 3. If someone is still there, notify them and close the match
+        if (room.players.length > 0) {
+            room.players[0].send(JSON.stringify({
+                type: "message",
+                text: "SERVER: THE OTHER PLAYER LEFT. GAME ENDED."
+            }));
+            room.players[0].send(JSON.stringify({ type: "end", result: "abandoned" }));
+        }
+
+        // 4. Always delete the room once someone leaves
+        rooms.delete(player.roomId);
+        player.roomId = undefined;
+    }
+}
+
 let handleMessage = (player: WebSocket, data: any) => {
     const room = rooms.get(player.roomId || '');
     if (!room) return;
@@ -38,7 +65,7 @@ let handleMessage = (player: WebSocket, data: any) => {
     const sanitizedText = data.text.trim().substring(0, 200);
     if (sanitizedText.length === 0) return;
     const opponentIndex = player.symbol === 'X' ? 1 : 0;
-    room.players[opponentIndex].send(JSON.stringify({type: "message",text: sanitizedText}));
+    room.players[opponentIndex].send(JSON.stringify({ type: "message", text: sanitizedText }));
 }
 
 let handleMove = (player: WebSocket, data: any) => {
@@ -61,9 +88,9 @@ let handleMove = (player: WebSocket, data: any) => {
             // Check if the number contains a winning combo (using bitwise &)
             if (WINNING_COMBOS.some(pattern => (boardValue & pattern) === pattern)) {
                 room.players[playerIndex].send(JSON.stringify({ "type": "end", "result": "win" }));
-                room.players[playerIndex].send(JSON.stringify({ "type": "message", "text":`SERVER: PLAYER ${player.symbol} WON`}));
+                room.players[playerIndex].send(JSON.stringify({ "type": "message", "text": `SERVER: PLAYER ${player.symbol} WON` }));
                 room.players[opponentIndex].send(JSON.stringify({ "type": "end", "result": "lose" }));
-                room.players[opponentIndex].send(JSON.stringify({ "type": "message", "text":`SERVER: PLAYER ${player.symbol} WON`}));
+                room.players[opponentIndex].send(JSON.stringify({ "type": "message", "text": `SERVER: PLAYER ${player.symbol} WON` }));
                 // return before server declares a TIE
                 return;
             }
@@ -72,9 +99,9 @@ let handleMove = (player: WebSocket, data: any) => {
         // Check tie
         if (room.moveCount >= 9) {
             room.players[playerIndex].send(JSON.stringify({ "type": "end", "result": "tie" }));
-            room.players[playerIndex].send(JSON.stringify({ "type": "message", "text":"SERVER: THE GAME IS A TIE"}));
+            room.players[playerIndex].send(JSON.stringify({ "type": "message", "text": "SERVER: THE GAME IS A TIE" }));
             room.players[opponentIndex].send(JSON.stringify({ "type": "end", "result": "tie" }));
-            room.players[opponentIndex].send(JSON.stringify({ "type": "message", "text":"SERVER: THE GAME IS A TIE"}));
+            room.players[opponentIndex].send(JSON.stringify({ "type": "message", "text": "SERVER: THE GAME IS A TIE" }));
         }
     }
 }
@@ -113,13 +140,23 @@ let handleSearch = (player: WebSocket) => {
 
 wss.on('connection', (ws) => {
     ws.on('error', console.error);
+
+    ws.on('close', () => {
+        handleLeave(ws);
+    });
+
     ws.on('message', (packet) => {
-        let data = JSON.parse(packet.toString());
-        switch (data.type) {
-            case "search": handleSearch(ws); break;
-            case "movement": handleMove(ws, data); break;
-            case "message": handleMessage(ws, data); break;
-            default: console.log("Unknown package received");
+        try {
+            let data = JSON.parse(packet.toString());
+            switch (data.type) {
+                case "search": handleSearch(ws); break;
+                case "movement": handleMove(ws, data); break;
+                case "message": handleMessage(ws, data); break;
+                case "leave": handleLeave(ws); break;
+                default: console.log("Unknown package received");
+            }
+        } catch (error) {
+            console.error("Error processing message:", error);
         }
     });
 });
