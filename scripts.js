@@ -20,9 +20,8 @@ const GameState = {
 
 // Handlers
 const handleMovement = (data) => {
-    console.log(`received ${data.type} ${data.square}`)
     GameState.turn = true;
-    display.innerHTML = "Tu turno";
+    display.innerHTML = "Your turn";
 
     const opponent_symbol = GameState.symbol === 'X' ? 'O' : 'X';
     GameState.board[data.square] = opponent_symbol;
@@ -30,13 +29,25 @@ const handleMovement = (data) => {
 }
 
 const handleClick = (number) => {
-    if (GameState.state === "playing" && GameState.board[number] === '' && GameState.turn === true ) {
+    if (GameState.state === "playing" && GameState.board[number] === '' && GameState.turn === true) {
         document.getElementById(`sq-${number}`).innerHTML = GameState.symbol;
         GameState.turn = false
-        display.innerHTML = "Turno del rival"
-        socket.send(JSON.stringify({type:"movement",square:number}));
+        display.innerHTML = "Opponent's turn";
+        socket.send(JSON.stringify({ type: "movement", square: number }));
     }
 };
+
+const handleEnd = (data) => {
+    console.log(`Game ended: result ${data.result}`);
+    switch (data.result) {
+        case "win":
+            display.innerHTML = "You won!"; break;
+        case "lose":
+            display.innerHTML = "You lost!"; break;
+        case "tie":
+            display.innerHTML = "It's a tie!";
+    }
+}
 
 const hanldleMatch = (data) => {
     console.log('Match found');
@@ -45,10 +56,10 @@ const hanldleMatch = (data) => {
 
     searchBtn.style.display = 'none';
     if (GameState.symbol === 'X') {
-        display.innerHTML = "Tu turno"
+        display.innerHTML = "Your turn";
         GameState.turn = true;
     } else {
-        display.innerHTML = "Turno del rival";
+        display.innerHTML = "Opponent's turn";
     }
 }
 
@@ -58,20 +69,21 @@ document.querySelectorAll('.square').forEach((square, index) => {
 
 // Searching match
 searchBtn.addEventListener('click', () => {
-    if (socket.readyState !== 1){
-        console.log("Error conectando con el servidor")
+    if (socket.readyState !== 1) {
+        console.log("Error connecting to the server")
         return;
     }
     GameState.state = "searching";
-    display.innerHTML = "Buscando partida...";
-    socket.send(JSON.stringify({type:"search"}));
+    display.innerHTML = "Searching for a match...";
+    socket.send(JSON.stringify({ type: "search" }));
 });
 
 socket.onmessage = (event) => {
     const data = JSON.parse(event.data);
-    switch (data.type){
+    switch (data.type) {
         case "match": hanldleMatch(data); break;
         case "movement": handleMovement(data); break;
+        case "end": handleEnd(data); break;
         default: console.log(`Error, received ${data.type}`)
     }
 }
