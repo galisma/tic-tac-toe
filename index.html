@@ -10,21 +10,32 @@
 </head>
 
 <body>
-    <main id="container">
-        <h1 id="display">Tic-Tac-Toe</h1>
-        <div id="board" role="grid" aria-label="Tic-Tac-Toe board">
-            <button class="square" id="sq-0" aria-label="Square 0"></button>
-            <button class="square" id="sq-1" aria-label="Square 1"></button>
-            <button class="square" id="sq-2" aria-label="Square 2"></button>
-            <button class="square" id="sq-3" aria-label="Square 3"></button>
-            <button class="square" id="sq-4" aria-label="Square 4"></button>
-            <button class="square" id="sq-5" aria-label="Square 5"></button>
-            <button class="square" id="sq-6" aria-label="Square 6"></button>
-            <button class="square" id="sq-7" aria-label="Square 7"></button>
-            <button class="square" id="sq-8" aria-label="Square 8"></button>
+    <div id="parent-container">
+        <div id="container">
+            <h1 id="display">Tic-Tac-Toe</h1>
+            <div id="board" role="grid" aria-label="Tic-Tac-Toe board">
+                <button class="square" id="sq-0" aria-label="Square 0"></button>
+                <button class="square" id="sq-1" aria-label="Square 1"></button>
+                <button class="square" id="sq-2" aria-label="Square 2"></button>
+                <button class="square" id="sq-3" aria-label="Square 3"></button>
+                <button class="square" id="sq-4" aria-label="Square 4"></button>
+                <button class="square" id="sq-5" aria-label="Square 5"></button>
+                <button class="square" id="sq-6" aria-label="Square 6"></button>
+                <button class="square" id="sq-7" aria-label="Square 7"></button>
+                <button class="square" id="sq-8" aria-label="Square 8"></button>
+            </div>
+            <button id="search">Search Match</button>
+            <button id="again" style="display: none;">Play Again</button>
+            <button id="leave" style="display: none;">Leave</button>
         </div>
-        <button id="search">Search Match</button>
-    </main>
+        <div id="chat" style="display: none;">
+            <div id="chatlog"></div>
+            <form id="chatform">
+                <input type="text" id="chatinput" placeholder="Type a message..." autocomplete="off" maxlength="200">
+                <button type="submit" id="chatsend">Send</button>
+            </form>
+        </div>
+    </div>
     <script src="scripts.js"></script>
 </body>
 

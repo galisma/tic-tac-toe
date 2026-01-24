@@ -1,6 +1,14 @@
 const display = document.getElementById("display");
 const board = document.getElementById("board");
 const searchBtn = document.getElementById("search");
+const againBtn = document.getElementById("again");
+const leaveBtn = document.getElementById("leave");
+
+// Chat
+const chatSection = document.getElementById("chat");
+const chatLog = document.getElementById("chatlog");
+const chatForm = document.getElementById("chatform");
+const chatInput = document.getElementById("chatinput");
 
 // Websocket
 const host = window.location.hostname || "localhost";
@@ -16,6 +24,13 @@ const GameState = {
     result: null, // 'WIN', 'LOSE', 'TIE', 'null'
     state: "idle", // 'idle', 'searching', 'playing', 'finished'
     board: ['', '', '', '', '', '', '', '', ''],
+}
+
+const addChatMessage = (text) => {
+    const msgDiv = document.createElement("div");
+    msgDiv.textContent = text;
+    chatLog.appendChild(msgDiv);
+    chatLog.scrollTop = chatLog.scrollHeight;
 }
 
 // Handlers
@@ -47,6 +62,11 @@ const handleEnd = (data) => {
         case "tie":
             display.innerHTML = "It's a tie!";
     }
+    
+}
+
+const handleChat = (data) => {
+    addChatMessage(`>${data.text}`);
 }
 
 const hanldleMatch = (data) => {
@@ -55,6 +75,7 @@ const hanldleMatch = (data) => {
     GameState.symbol = data.symbol;
 
     searchBtn.style.display = 'none';
+    chatSection.style.display = 'flex';
     if (GameState.symbol === 'X') {
         display.innerHTML = "Your turn";
         GameState.turn = true;
@@ -65,6 +86,14 @@ const hanldleMatch = (data) => {
 
 document.querySelectorAll('.square').forEach((square, index) => {
     square.addEventListener('click', () => handleClick(index));
+});
+
+chatForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const text = chatInput.value.trim();
+    socket.send(JSON.stringify({ type: "message", text }));
+    addChatMessage(text, "me");
+    chatInput.value = "";
 });
 
 // Searching match
@@ -84,6 +113,7 @@ socket.onmessage = (event) => {
         case "match": hanldleMatch(data); break;
         case "movement": handleMovement(data); break;
         case "end": handleEnd(data); break;
+        case "message": handleChat(data); break;
         default: console.log(`Error, received ${data.type}`)
     }
 }

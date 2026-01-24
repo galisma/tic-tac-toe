@@ -8,6 +8,7 @@
 }
 
 @media (prefers-color-scheme: light) {
+
     /* same colors atm */
     :root {
         --display: #eee;
@@ -27,13 +28,24 @@
 
 body {
     display: flex;
-    flex-direction: column;
     justify-content: center;
     align-items: center;
     min-height: 100vh;
     color: var(--display);
     background-color: var(--website-bg);
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    padding: 20px;
+}
+
+#parent-container {
+    display: flex;
+    flex-direction: row;
+    gap: 2rem;
+    width: 100%;
+    max-width: 900px;
+    align-items: stretch;
+    justify-content: center;
+    margin: 0 auto;
 }
 
 #container {
@@ -42,7 +54,7 @@ body {
     align-items: center;
     justify-content: center;
     gap: 2rem;
-    width: 90%;
+    flex: 1;
     max-width: 400px;
 }
 
@@ -99,4 +111,76 @@ body {
 
 #search:hover {
     background-color: var(--square-hover);
+}
+
+#chat {
+    background-color: var(--board-bg);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    flex: 1;
+    max-width: 300px;
+    border: 8px solid var(--board-bg);
+    height: 500px;
+}
+
+#chatlog {
+    width: 100%;
+    flex: 1;
+    background-color: var(--square-bg);
+    overflow-y: auto;
+    padding: 10px;
+    font-size: 0.9rem;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+
+#chatform {
+    display: flex;
+    margin-top: 10px;
+    gap: 4px;
+}
+
+#chatinput {
+    color: var(--display);
+    flex-grow: 1;
+    background-color: var(--square-bg);
+    border: none;
+    padding: 8px;
+}
+
+#chatsend {
+    border: none;
+    color: var(--display);
+    background-color: var(--square-bg);
+    padding: 8px 15px;
+    cursor: pointer;
+}
+
+#chatsend:hover {
+    background-color: var(--square-hover);
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 800px) {
+    #parent-container {
+        flex-direction: column;
+        align-items: center;
+        max-width: 400px;
+        width: 100%;
+    }
+
+    #chat {
+        width: 100%;
+        min-height: 200px;
+        max-height: 200px;
+        max-width: 400px;
+    }
+
+    #container {
+        width: 100%;
+    }
 }
