@@ -1,6 +1,17 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import { v4 as uuidv4 } from 'uuid';
 
+const WINNING_COMBOS = [
+    7,   // 000000111 (bottom row)
+    56,  // 000111000 (middle row)
+    448, // 111000000 (top row)
+    73,  // 001001001 (right column)
+    146, // 010010010 (middle column)
+    292, // 100100100 (left column)
+    273, // 100010001 (main diagonal)
+    84   // 001010100 (anti diagonal)
+];
+
 type Square = 'X' | 'O' | '';
 declare module 'ws' {
     interface WebSocket {
@@ -16,17 +27,38 @@ const rooms: Map<string, {
     players: WebSocket[];
     board: Square[];
     turn: Square;
+    moveCount: number;
 }> = new Map();
 
 let handleMove = (player: WebSocket, data: any) => {
     const room = rooms.get(player.roomId || '');
 
-    if(!room) return;
+    if (!room) return;
+    let playerIndex = player.symbol === 'X' ? 0 : 1;
+    let opponentIndex = player.symbol === 'X' ? 1 : 0;
 
     if (room.turn === player.symbol && room.board[data.square] === '') {
         room.board[data.square] = player.symbol;
         room.turn = room.turn === 'X' ? 'O' : 'X';
-        room.players[player.symbol === 'X' ? 1 : 0].send(JSON.stringify(data));
+        room.moveCount++;
+        room.players[opponentIndex].send(JSON.stringify(data));
+
+        // Check winner
+        if (room.moveCount >= 5) {
+            // Map the board to a number 
+            const boardValue = parseInt(room.board.map(square => square === player.symbol ? '1' : '0').join(''), 2);
+            // Check if the number contains a winning combo (using bitwise &)
+            if (WINNING_COMBOS.some(pattern => (boardValue & pattern) === pattern)) {
+                room.players[playerIndex].send(JSON.stringify({ "type": "end", "result": "win" }));
+                room.players[opponentIndex].send(JSON.stringify({ "type": "end", "result": "lose" }));
+            }
+        }
+
+        // Check tie
+        if (room.moveCount >= 9) {
+            room.players[playerIndex].send(JSON.stringify({ "type": "end", "result": "tie" }));
+            room.players[opponentIndex].send(JSON.stringify({ "type": "end", "result": "tie" }));
+        }
     }
 }
 
@@ -36,13 +68,14 @@ let handleSearch = (player: WebSocket) => {
         rooms.set(roomId, {
             players: [player],
             board: Array(9).fill(''),
-            turn: 'X'
+            turn: 'X',
+            moveCount: 0,
         });
 
         waitingRoom = roomId;
         player.roomId = roomId;
 
-        console.log(`Sala ${roomId} creada. Jugador 1 esperando`)
+        console.log(`Room ${roomId} created. Player 1 is waiting...`);
     } else {
         const roomId = waitingRoom;
         const room = rooms.get(roomId);
@@ -51,9 +84,9 @@ let handleSearch = (player: WebSocket) => {
             room.players.push(player);
             player.roomId = roomId;
             waitingRoom = null;
-            console.log(`Partida lista en la sala: ${roomId}`);
+            console.log(`Game ready in room: ${roomId}`);
             room.players[0].send(JSON.stringify({ type: 'match', symbol: 'X' }));
-            room.players[1].send(JSON.stringify({ type: 'match', symbol: '0' }));
+            room.players[1].send(JSON.stringify({ type: 'match', symbol: 'O' }));
 
             room.players[0].symbol = 'X';
             room.players[1].symbol = 'O';
