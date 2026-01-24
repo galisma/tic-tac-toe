@@ -20,7 +20,7 @@ declare module 'ws' {
     }
 }
 
-const wss = new WebSocketServer({ port: 8080 });
+const wss = new WebSocketServer({ port: 8080, maxPayload: 1024 * 10 });
 
 let waitingRoom: string | null = null;
 const rooms: Map<string, {
@@ -29,6 +29,17 @@ const rooms: Map<string, {
     turn: Square;
     moveCount: number;
 }> = new Map();
+
+let handleMessage = (player: WebSocket, data: any) => {
+    const room = rooms.get(player.roomId || '');
+    if (!room) return;
+    if (typeof data.text !== 'string') return;
+
+    const sanitizedText = data.text.trim().substring(0, 200);
+    if (sanitizedText.length === 0) return;
+    const opponentIndex = player.symbol === 'X' ? 1 : 0;
+    room.players[opponentIndex].send(JSON.stringify({type: "message",text: sanitizedText}));
+}
 
 let handleMove = (player: WebSocket, data: any) => {
     const room = rooms.get(player.roomId || '');
@@ -50,14 +61,20 @@ let handleMove = (player: WebSocket, data: any) => {
             // Check if the number contains a winning combo (using bitwise &)
             if (WINNING_COMBOS.some(pattern => (boardValue & pattern) === pattern)) {
                 room.players[playerIndex].send(JSON.stringify({ "type": "end", "result": "win" }));
+                room.players[playerIndex].send(JSON.stringify({ "type": "message", "text":`SERVER: PLAYER ${player.symbol} WON`}));
                 room.players[opponentIndex].send(JSON.stringify({ "type": "end", "result": "lose" }));
+                room.players[opponentIndex].send(JSON.stringify({ "type": "message", "text":`SERVER: PLAYER ${player.symbol} WON`}));
+                // return before server declares a TIE
+                return;
             }
         }
 
         // Check tie
         if (room.moveCount >= 9) {
             room.players[playerIndex].send(JSON.stringify({ "type": "end", "result": "tie" }));
+            room.players[playerIndex].send(JSON.stringify({ "type": "message", "text":"SERVER: THE GAME IS A TIE"}));
             room.players[opponentIndex].send(JSON.stringify({ "type": "end", "result": "tie" }));
+            room.players[opponentIndex].send(JSON.stringify({ "type": "message", "text":"SERVER: THE GAME IS A TIE"}));
         }
     }
 }
@@ -101,6 +118,8 @@ wss.on('connection', (ws) => {
         switch (data.type) {
             case "search": handleSearch(ws); break;
             case "movement": handleMove(ws, data); break;
+            case "message": handleMessage(ws, data); break;
+            default: console.log("Unknown package received");
         }
     });
 });
