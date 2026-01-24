@@ -101,7 +101,7 @@ const handleClick = (number) => {
         document.getElementById(`sq-${number}`).textContent = GameState.symbol;
         GameState.turn = false
         display.innerHTML = "Opponent's turn";
-        socket.send(JSON.stringify({ type: "movement", square: number }));
+        socket.send(JSON.stringify({ type: "move", square: number }));
     }
 };
 
@@ -121,8 +121,51 @@ const handleEnd = (data) => {
     againBtn.style.display = 'flex';
 }
 
+
+// Flag for rematch voting
+let isRematchVoted = false;
+
+const handleRematchUpdate = (data) => {
+    // This is called when the OPPONENT toggles their vote
+    if (data.otherPlayerVoted) {
+        display.textContent = "Opponent is ready for Rematch!";
+        // Visual feedback
+        if (!isRematchVoted) {
+            againBtn.style.backgroundColor = 'lightgreen';
+            againBtn.textContent = "Opponent Ready! Click to Start";
+        }
+    } else {
+        // Opponent cancelled
+        display.textContent = "Opponent cancelled rematch vote.";
+        if (!isRematchVoted) {
+            againBtn.style.backgroundColor = "var(--square-bg)";
+            againBtn.textContent = "Play Again";
+        }
+    }
+}
+
+const handleGameError = (data) => {
+    addChatMessage("Error: " + data.message);
+
+    // If error happened during vote (e.g. opponent left), reset the button
+    if (isRematchVoted || data.message.includes("Opponent has disconnected")) {
+        isRematchVoted = false;
+        againBtn.style.backgroundColor = "var(--square-bg)";
+        againBtn.textContent = "Play Again";
+        againBtn.disabled = true; // Disable button
+        againBtn.style.cursor = "not-allowed";
+        display.textContent = data.message;
+    }
+}
+
 const handleMatch = (data) => {
+    cleanGameState();
     leaveBtn.style.display = 'flex';
+    againBtn.style.display = 'none';
+    againBtn.style.backgroundColor = "var(--square-bg)";
+    againBtn.textContent = "Play Again";
+    isRematchVoted = false; // Reset vote
+
     console.log('Match found');
     GameState.state = "playing";
     GameState.symbol = data.symbol;
@@ -142,11 +185,22 @@ document.querySelectorAll('.square').forEach((square, index) => {
 });
 
 againBtn.addEventListener('click', () => {
-    againBtn.style.display = 'none';
-    cleanGameState();
-    GameState.state = "searching";
-    display.innerHTML = "Searching for a match...";
-    socket.send(JSON.stringify({ type: "search" }));
+    // Toggle Logic
+    if (!isRematchVoted) {
+        // VOTE TRUE
+        isRematchVoted = true;
+        againBtn.style.backgroundColor = 'orange';
+        againBtn.textContent = "Waiting... (Click to Cancel)";
+        display.textContent = "Waiting for opponent...";
+        socket.send(JSON.stringify({ type: "rematch", vote: true }));
+    } else {
+        // VOTE FALSE (Cancel)
+        isRematchVoted = false;
+        againBtn.style.backgroundColor = "var(--square-bg)";
+        againBtn.textContent = "Play Again";
+        display.textContent = "Cancelled. Click to play again.";
+        socket.send(JSON.stringify({ type: "rematch", vote: false }));
+    }
 });
 
 // Searching match
@@ -173,8 +227,10 @@ socket.onmessage = (event) => {
         const data = JSON.parse(event.data);
         switch (data.type) {
             case "match": handleMatch(data); break;
-            case "movement": handleMovement(data); break;
+            case "move": handleMovement(data); break;
             case "end": handleEnd(data); break;
+            case "rematch_update": handleRematchUpdate(data); break;
+            case "error": handleGameError(data); break;
             case "message": handleChat(data); break;
             default: console.log(`Error, received ${data.type}`)
         }
