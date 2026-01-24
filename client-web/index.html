@@ -24,15 +24,18 @@
                 <button class="square" id="sq-7" aria-label="Square 7"></button>
                 <button class="square" id="sq-8" aria-label="Square 8"></button>
             </div>
-            <button id="search">Search Match</button>
-            <button id="again" style="display: none;">Play Again</button>
-            <button id="leave" style="display: none;">Leave</button>
+            <button id="search-btn">Search Match</button>
+            <div id="endbuttons">
+                <button id="again-btn" style="display: none;">Play Again</button>
+                <button id="leave-btn" style="display: none;" onclick="leave()">Leave</button>
+            </div>
         </div>
         <div id="chat" style="display: none;">
             <div id="chatlog"></div>
             <form id="chatform">
                 <input type="text" id="chatinput" placeholder="Type a message..." autocomplete="off" maxlength="200">
                 <button type="submit" id="chatsend">Send</button>
+                <button id="mute-btn" onclick="mute()">Mute</button>
             </form>
         </div>
     </div>
