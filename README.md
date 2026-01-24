@@ -12,7 +12,7 @@ This is the API at the moment
 
 ### Send movement
 ```json
-{"type":"movement","square": 3}
+{"type":"movement","square": 3} // 0 - 8
 ```
 
 ## Server
@@ -20,5 +20,8 @@ This is the API at the moment
 ### Match found
 
 ```json
-{"type":"match", "symbol":"X"}
+{"type":"match", "symbol":"X"} // "X" "O"
 ```
+### Match ended
+```json
+{"type":"end", "result":"win"} // "win" "lose" "tie"
