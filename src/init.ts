@@ -30,14 +30,15 @@ const rooms: Map<string, {
     moveCount: number;
 }> = new Map();
 
-let handleLeave = (player: WebSocket) => {
+const handleLeave = (player: WebSocket) => {
     // 1. If the player was in the waiting room, clear it
     if (player.roomId === waitingRoom) {
         waitingRoom = null;
     }
 
     if (player.roomId && rooms.has(player.roomId)) {
-        const room = rooms.get(player.roomId)!;
+        const room = rooms.get(player.roomId);
+        if (!room) return;
 
         // 2. Remove player from the room
         room.players = room.players.filter(p => p !== player);
@@ -57,7 +58,7 @@ let handleLeave = (player: WebSocket) => {
     }
 }
 
-let handleMessage = (player: WebSocket, data: any) => {
+const handleMessage = (player: WebSocket, data: any) => {
     const room = rooms.get(player.roomId || '');
     if (!room) return;
     if (typeof data.text !== 'string') return;
@@ -68,12 +69,12 @@ let handleMessage = (player: WebSocket, data: any) => {
     room.players[opponentIndex].send(JSON.stringify({ type: "message", text: sanitizedText }));
 }
 
-let handleMove = (player: WebSocket, data: any) => {
+const handleMove = (player: WebSocket, data: any) => {
     const room = rooms.get(player.roomId || '');
 
     if (!room) return;
-    let playerIndex = player.symbol === 'X' ? 0 : 1;
-    let opponentIndex = player.symbol === 'X' ? 1 : 0;
+    const playerIndex = player.symbol === 'X' ? 0 : 1;
+    const opponentIndex = player.symbol === 'X' ? 1 : 0;
 
     if (room.turn === player.symbol && room.board[data.square] === '') {
         room.board[data.square] = player.symbol;
@@ -106,7 +107,7 @@ let handleMove = (player: WebSocket, data: any) => {
     }
 }
 
-let handleSearch = (player: WebSocket) => {
+const handleSearch = (player: WebSocket) => {
     if (waitingRoom === null) {
         const roomId = uuidv4();
         rooms.set(roomId, {
@@ -147,7 +148,7 @@ wss.on('connection', (ws) => {
 
     ws.on('message', (packet) => {
         try {
-            let data = JSON.parse(packet.toString());
+            const data = JSON.parse(packet.toString());
             switch (data.type) {
                 case "search": handleSearch(ws); break;
                 case "movement": handleMove(ws, data); break;
