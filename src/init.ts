@@ -1,5 +1,7 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import { v4 as uuidv4 } from 'uuid';
+// 22:53 saturday, 24. this is starting to look like spaguetti lmao
+// play again function incoming
 
 const WINNING_COMBOS = [
     7,   // 000000111 (bottom row)
@@ -13,6 +15,7 @@ const WINNING_COMBOS = [
 ];
 
 type Square = 'X' | 'O' | '';
+type Status = 'playing' | 'finished';
 declare module 'ws' {
     interface WebSocket {
         roomId?: string;
@@ -27,11 +30,12 @@ const rooms: Map<string, {
     players: WebSocket[];
     board: Square[];
     turn: Square;
+    status: Status;
     moveCount: number;
+    rematchVotes: Set<WebSocket>;
 }> = new Map();
 
 const handleLeave = (player: WebSocket) => {
-    // 1. If the player was in the waiting room, clear it
     if (player.roomId === waitingRoom) {
         waitingRoom = null;
     }
@@ -39,11 +43,7 @@ const handleLeave = (player: WebSocket) => {
     if (player.roomId && rooms.has(player.roomId)) {
         const room = rooms.get(player.roomId);
         if (!room) return;
-
-        // 2. Remove player from the room
         room.players = room.players.filter(p => p !== player);
-
-        // 3. If someone is still there, notify them and close the match
         if (room.players.length > 0) {
             room.players[0].send(JSON.stringify({
                 type: "message",
@@ -52,7 +52,6 @@ const handleLeave = (player: WebSocket) => {
             room.players[0].send(JSON.stringify({ type: "end", result: "abandoned" }));
         }
 
-        // 4. Always delete the room once someone leaves
         rooms.delete(player.roomId);
         player.roomId = undefined;
     }
@@ -69,41 +68,97 @@ const handleMessage = (player: WebSocket, data: any) => {
     room.players[opponentIndex].send(JSON.stringify({ type: "message", text: sanitizedText }));
 }
 
+const handleRematch = (player: WebSocket, data: any) => {
+    const room = rooms.get(player.roomId || '');
+    if (!room) {
+        player.send(JSON.stringify({ type: "error", message: "Opponent has disconnected" }));
+        return;
+    }
+
+    // 1. Validation: Is opponent still here?
+    if (room.players.length < 2) {
+        player.send(JSON.stringify({ type: "error", message: "Opponent has left the game" }));
+        return;
+    }
+
+    // 2. Handle Vote logic
+    if (data.vote === true) {
+        room.rematchVotes.add(player);
+    } else {
+        // Cancel vote
+        room.rematchVotes.delete(player);
+    }
+
+    // 3. Notify opponent
+    const opponentIndex = player.symbol === 'X' ? 1 : 0;
+    if (room.players[opponentIndex]) {
+        room.players[opponentIndex].send(JSON.stringify({ 
+            type: "rematch_update", 
+            otherPlayerVoted: data.vote // Forward the true/false status
+        }));
+    }
+
+    // 4. Start Game if both TRUE
+    if (room.rematchVotes.size >= 2) {
+        room.board = Array(9).fill('');
+        room.moveCount = 0;
+        room.status = 'playing';
+        room.rematchVotes.clear(); // Clear for next game
+
+        room.players.forEach(p => {
+            p.send(JSON.stringify({ type: "match", symbol: p.symbol }));
+            p.send(JSON.stringify({ type: "message", text: "SERVER: REMATCH STARTED!" }));
+        });
+        room.turn = 'X';
+    }
+}
+
 const handleMove = (player: WebSocket, data: any) => {
     const room = rooms.get(player.roomId || '');
-
     if (!room) return;
+    
+    // 1. Validate Turn
+    if (room.turn !== player.symbol) {
+        player.send(JSON.stringify({ type: "error", message: "Not your turn" }));
+        return;
+    }
+
+    // 2. Validate Move
+    if (room.board[data.square] !== '') {
+         player.send(JSON.stringify({ type: "error", message: "Square already taken" }));
+         return;
+    }
+
     const playerIndex = player.symbol === 'X' ? 0 : 1;
     const opponentIndex = player.symbol === 'X' ? 1 : 0;
 
-    if (room.turn === player.symbol && room.board[data.square] === '') {
-        room.board[data.square] = player.symbol;
-        room.turn = room.turn === 'X' ? 'O' : 'X';
-        room.moveCount++;
-        room.players[opponentIndex].send(JSON.stringify(data));
+    room.board[data.square] = player.symbol;
+    room.turn = room.turn === 'X' ? 'O' : 'X';
+    room.moveCount++;
+    
+    // Forward 'move' packet (renamed from 'movement')
+    room.players[opponentIndex].send(JSON.stringify({ type: "move", square: data.square }));
 
-        // Check winner
-        if (room.moveCount >= 5) {
-            // Map the board to a number 
-            const boardValue = parseInt(room.board.map(square => square === player.symbol ? '1' : '0').join(''), 2);
-            // Check if the number contains a winning combo (using bitwise &)
-            if (WINNING_COMBOS.some(pattern => (boardValue & pattern) === pattern)) {
-                room.players[playerIndex].send(JSON.stringify({ "type": "end", "result": "win" }));
-                room.players[playerIndex].send(JSON.stringify({ "type": "message", "text": `SERVER: PLAYER ${player.symbol} WON` }));
-                room.players[opponentIndex].send(JSON.stringify({ "type": "end", "result": "lose" }));
-                room.players[opponentIndex].send(JSON.stringify({ "type": "message", "text": `SERVER: PLAYER ${player.symbol} WON` }));
-                // return before server declares a TIE
-                return;
-            }
+    // Check winner
+    if (room.moveCount >= 5) {
+        const boardValue = parseInt(room.board.map(square => square === player.symbol ? '1' : '0').join(''), 2);
+        if (WINNING_COMBOS.some(pattern => (boardValue & pattern) === pattern)) {
+            const winPacket = JSON.stringify({ "type": "end", "result": "win", "winner": player.symbol });
+            const losePacket = JSON.stringify({ "type": "end", "result": "lose", "winner": player.symbol });
+            
+            room.players[playerIndex].send(winPacket);
+            room.players[opponentIndex].send(losePacket);
+            
+            room.status = 'finished';
+            return;
         }
+    }
 
-        // Check tie
-        if (room.moveCount >= 9) {
-            room.players[playerIndex].send(JSON.stringify({ "type": "end", "result": "tie" }));
-            room.players[playerIndex].send(JSON.stringify({ "type": "message", "text": "SERVER: THE GAME IS A TIE" }));
-            room.players[opponentIndex].send(JSON.stringify({ "type": "end", "result": "tie" }));
-            room.players[opponentIndex].send(JSON.stringify({ "type": "message", "text": "SERVER: THE GAME IS A TIE" }));
-        }
+    // Check tie
+    if (room.moveCount >= 9) {
+        const tiePacket = JSON.stringify({ "type": "end", "result": "tie", "winner": null });
+        room.players.forEach(p => p.send(tiePacket));
+        room.status = 'finished';
     }
 }
 
@@ -115,6 +170,8 @@ const handleSearch = (player: WebSocket) => {
             board: Array(9).fill(''),
             turn: 'X',
             moveCount: 0,
+            status: 'playing',
+            rematchVotes: new Set(),
         });
 
         waitingRoom = roomId;
@@ -151,9 +208,10 @@ wss.on('connection', (ws) => {
             const data = JSON.parse(packet.toString());
             switch (data.type) {
                 case "search": handleSearch(ws); break;
-                case "movement": handleMove(ws, data); break;
+                case "move": handleMove(ws, data); break;
                 case "message": handleMessage(ws, data); break;
                 case "leave": handleLeave(ws); break;
+                case "rematch": handleRematch(ws, data); break;
                 default: console.log("Unknown package received");
             }
         } catch (error) {
