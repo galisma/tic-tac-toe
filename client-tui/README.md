@@ -1,4 +1,5 @@
 # Tic-Tac-Toe over WebSockets
+## Rust TUI client. ⚠️⚠️ FULLY AI GENERATED AS AN EXPERIMENT ⚠️⚠️. Needs to be checked. It's not 100% working neither complaiant with the API
 
 The API is unstable and may change at any time.
 
