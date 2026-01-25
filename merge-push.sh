@@ -13,9 +13,12 @@ function sync_readme() {
 }
 
 function merge() {
-    git merge -s subtree server -m "Merge server"
-    git merge -s subtree client-web -m "Merge client-web"
-    git merge -s subtree client-tui -m "Merge client-tui"
+    echo "Sincronizando subcarpetas en Main..."
+    
+    # Intentamos mergear. Si falla porque Git 'olvidó' el vínculo, usamos subtree pull
+    git subtree pull --prefix=server server --squash -m "Update server"
+    git subtree pull --prefix=client-web client-web --squash -m "Update client-web"
+    git subtree pull --prefix=client-tui client-tui --squash -m "Update client-tui"
 }
 
 function push() {
